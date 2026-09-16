@@ -10,7 +10,7 @@ Magic Book is not a decorative feature inside ArcSweep. It is an embodied interf
                  │ pages · margins · ink · time │
                  └──────────────┬───────────────┘
                                 │
-               typed bridges / receipts / intents
+               bridges / receipts / intents
                                 │
        ┌──────────────┬─────────┼─────────┬──────────────┐
        │              │         │         │              │
@@ -25,35 +25,23 @@ Magic Book is not a decorative feature inside ArcSweep. It is an embodied interf
 
 ## Responsibilities
 
-### Ghost
+**Ghost** owns durable publishing primitives: posts, pages, authorship, tags, public/private publication, membership and the mature editing surface.
 
-Owns durable publishing primitives: posts, pages, authorship, tags, public/private publication, membership and the mature editing surface.
+**Magic Book** owns embodied presentation and direct manipulation: spreads, page objects, margins, bookmarks, temporal navigation, writing surfaces and world-specific visual grammars.
 
-### Magic Book
+**ArcSweep** owns cross-domain intelligence: navigation, semantic linking, caretaker/guide behaviour, canon reasoning and orchestration between book objects and services.
 
-Owns embodied presentation and direct manipulation: spreads, page objects, margins, bookmarks, temporal navigation, writing surfaces and world-specific visual grammars.
+**Runa** owns sound and haptic state: world hums, glyph playback, scene-linked sound and receipts for embodied output.
 
-### ArcSweep
+**Glyph Forge** owns symbol form: stroke capture, romanisation, phoneme/stress information, semantics, tracing and generated variants.
 
-Owns cross-domain intelligence: navigation, semantic linking, caretaker/guide behaviour, canon reasoning and orchestration between book objects and services.
-
-### Runa
-
-Owns sound and haptic state: world hums, glyph playback, scene-linked sound and receipts for embodied output.
-
-### Glyph Forge
-
-Owns symbol form: stroke capture, romanisation, phoneme/stress information, semantics, tracing and generated variants.
-
-### Observer / PREMAQC
-
-Owns measurement and provenance surfaces used by research volumes: receipts, evidence, definitions, observations and versioned claims.
+**Observer / PREMAQC** owns measurement and provenance surfaces used by research volumes: receipts, evidence, definitions, observations and versioned claims.
 
 ## Canonical objects
 
-The first canonical UI object is `BookVolume`. A volume supplies identity, visual accent, capabilities, bridges and `TimelineEntry[]`. Renderers are replaceable. Data is not.
+The first canonical UI object is the volume manifest. A volume supplies identity, visual accent, capabilities, bridges and chronology. Renderers are replaceable. Data is not.
 
-This distinction is important for TimelineJS3: it may become one renderer for `TimelineEntry[]`, but it must not become the source of truth for chronology.
+This distinction matters for TimelineJS3: it may become one renderer for chronology, but it must not become the source of truth for chronology.
 
 ## Integration rule
 
@@ -63,9 +51,9 @@ This keeps the page from becoming a dependency thicket and lets the same volume 
 
 ## Phase sequence
 
-**Phase 0 — Shell**: responsive spread, local world manifest, native temporal spine, Ghost Content API, browser-event bridges.
+**Phase 0 — Dependency-free shell**: responsive spread, local world manifest, native temporal spine, Ghost Content API, browser-event bridges.
 
-**Phase 1 — Live content**: tag-to-volume routing, preview/draft reading, book-native cards for Ghost posts/pages and source metadata.
+**Phase 1 — Workspace promotion + live content**: regenerate Ghost's pnpm lockfile, make Magic Book a first-class package, add tag-to-volume routing and preview/draft reading.
 
 **Phase 2 — Ink**: Pointer Events / Pencil capture, SVG stroke storage, Glyph Forge trace/playback bridge, marginalia promotion receipts.
 
