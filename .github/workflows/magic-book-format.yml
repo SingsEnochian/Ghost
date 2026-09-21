@@ -1,0 +1,46 @@
+name: Magic Book One-shot Format
+
+on:
+  push:
+    branches:
+      - magic-book/phase-0-shell
+    paths:
+      - .github/workflows/magic-book-format.yml
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: magic-book/phase-0-shell
+
+      - uses: ./.github/actions/setup-node-pnpm
+        with:
+          node-version: 22.23.1
+
+      - name: Format Magic Book Phase 0
+        run: >-
+          pnpm format --
+          .github/workflows/magic-book-smoke.yml
+          apps/magic-book/README.md
+          apps/magic-book/index.html
+          apps/magic-book/src/adapters/ghost.js
+          apps/magic-book/src/book/bridge.js
+          apps/magic-book/src/book/manifest.js
+          apps/magic-book/src/main.js
+          apps/magic-book/src/styles.css
+          docs/magic-book/ARCHITECTURE.md
+
+      - name: Commit formatted files and remove one-shot workflow
+        run: |
+          git rm .github/workflows/magic-book-format.yml
+          git config user.name "Magic Book Formatter"
+          git config user.email "actions@users.noreply.github.com"
+          git add .github/workflows/magic-book-smoke.yml apps/magic-book docs/magic-book
+          git commit -m "style(magic-book): apply repository formatting"
+          git push origin HEAD:magic-book/phase-0-shell
