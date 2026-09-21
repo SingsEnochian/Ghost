@@ -1,0 +1,152 @@
+/*
+ * Gifted type palette for Magic Book.
+ * Public repo rule: font binaries are NOT committed here.
+ * These faces resolve from locally installed fonts. A private deployment may
+ * provide licensed webfont assets under the same family aliases.
+ */
+@font-face {
+  font-family: 'Magic Hypnotic 04';
+  src: local('Hypnotic 04 No Outline');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Magic Hypnotic 04 Outline';
+  src: local('Hypnotic 04 Outline Only');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Magic Hypnotic 08';
+  src: local('Hypnotic 08 OThin');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Magic Square Lily';
+  src: local('Square Lily Monogram');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Magic Extasy';
+  src: local('Extasy');
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Magic Valeria Secret';
+  src: local('Valeria Secret');
+  font-display: swap;
+}
+
+.book-header h1 {
+  position: relative;
+  display: inline-block;
+}
+
+.magic-book--state-awakened .book-header h1,
+.magic-book--state-write .book-header h1 {
+  font-family: 'Magic Hypnotic 04', 'Cormorant Garamond', serif;
+  letter-spacing: 0.035em;
+}
+
+.magic-book--state-awakened .book-header h1::after,
+.magic-book--state-write .book-header h1::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-family: 'Magic Hypnotic 04 Outline', 'Cormorant Garamond', serif;
+  color: var(--volume-accent);
+  opacity: 0.42;
+  transform: translate(0.025em, -0.015em);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--volume-accent) 44%, transparent));
+  animation: hypnotic-breathe 4.8s ease-in-out infinite;
+}
+
+.magic-book--state-awakened .volume-title h2 {
+  font-family: 'Magic Hypnotic 08', 'Cormorant Garamond', serif;
+  letter-spacing: 0.015em;
+}
+
+.bookplate-mark {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  top: 18px;
+  transform: translateX(-50%);
+  font-family: 'Magic Square Lily', 'Cormorant Garamond', serif;
+  font-size: 2.15rem;
+  color: color-mix(in srgb, var(--volume-accent) 62%, #80664e);
+  opacity: 0.18;
+  pointer-events: none;
+  transition:
+    opacity 0.35s ease,
+    filter 0.35s ease;
+}
+.magic-book--state-awakened .bookplate-mark {
+  opacity: 0.72;
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--volume-accent) 50%, transparent));
+}
+
+.magic-book--chronicle.magic-book--state-awakened .volume-title h2 {
+  font-family: 'Magic Valeria Secret', 'Magic Hypnotic 08', 'Cormorant Garamond', serif;
+}
+
+.ritual-hint {
+  margin: 18px 0 0;
+  font:
+    italic 400 0.92rem/1.4 'Cormorant Garamond',
+    serif;
+  color: #75614e;
+}
+
+.book-a11y-nav {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.book-a11y-nav:focus-within {
+  position: fixed;
+  z-index: 100;
+  top: 8px;
+  left: 8px;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+  clip-path: none;
+  white-space: normal;
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  background: #17130f;
+  border: 1px solid #ffffff33;
+  border-radius: 8px;
+}
+.book-a11y-nav button {
+  border: 1px solid #ffffff33;
+  background: #2a211a;
+  color: #f8eee0;
+  padding: 7px 9px;
+  border-radius: 5px;
+}
+
+@keyframes hypnotic-breathe {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translate(0.015em, -0.01em) scale(1);
+  }
+  50% {
+    opacity: 0.62;
+    transform: translate(-0.015em, 0.012em) scale(1.008);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .magic-book--state-awakened .book-header h1::after,
+  .magic-book--state-write .book-header h1::after {
+    animation: none;
+  }
+}
