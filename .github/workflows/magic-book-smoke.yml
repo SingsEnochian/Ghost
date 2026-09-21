@@ -52,8 +52,8 @@ jobs:
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import {canonicalGestures} from './apps/magic-book/src/attunement/gestures.js';
-          import {matchGestureSequence, normalizePointerGesture} from './apps/magic-book/src/attunement/engine.js';
-          assert.equal(canonicalGestures.length, 12);
+          import {matchGestureSequence, normalizePointerGesture, resolveZone} from './apps/magic-book/src/attunement/engine.js';
+          assert.equal(canonicalGestures.length, 14);
           const wake = [
             {type:'tap', zone:'sigil_primary', at:100, durationMs:80, pointerType:'touch'},
             {type:'tap', zone:'sigil_primary', at:400, durationMs:90, pointerType:'touch'},
@@ -66,7 +66,12 @@ jobs:
             {type:'tap', zone:'bottom_margin', at:1140, durationMs:80, pointerType:'touch'}
           ];
           assert.equal(matchGestureSequence(calm, canonicalGestures, {}).id, 'calm-page-v1');
+          assert.equal(matchGestureSequence([{type:'tap', zone:'page_edge_right', at:100, durationMs:70, pointerType:'touch'}], canonicalGestures, {}).id, 'page-forward-v1');
+          assert.equal(matchGestureSequence([{type:'tap', zone:'page_edge_left', at:100, durationMs:70, pointerType:'touch'}], canonicalGestures, {}).id, 'page-back-v1');
           assert.equal(normalizePointerGesture({clientX:0,clientY:0,timeStamp:0,pointerType:'pen'},{clientX:70,clientY:0,timeStamp:220,pointerType:'pen'},'sigil_primary').type, 'trace');
+          const book = {getBoundingClientRect: () => ({left:0, top:0, width:1000, height:800})};
+          assert.equal(resolveZone({clientX:20,clientY:400,target:{}}, book), 'page_edge_left');
+          assert.equal(resolveZone({clientX:980,clientY:400,target:{}}, book), 'page_edge_right');
           console.log('attunement matcher ok');
           NODE
 
@@ -103,14 +108,16 @@ jobs:
         run: |
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
-          const dummy = {value: '', addEventListener() {}};
+          const dummy = {value: '', addEventListener() {}, matches() { return false; }};
           const root = {
             innerHTML: '',
+            addEventListener() {},
+            removeEventListener() {},
             querySelectorAll() { return []; },
             querySelector() { return dummy; }
           };
           globalThis.document = {querySelector: selector => selector === '#root' ? root : dummy, body: {dataset:{}}};
-          globalThis.window = {location: {search: ''}, dispatchEvent() {}};
+          globalThis.window = {location: {search: ''}, dispatchEvent() {}, addEventListener() {}};
           globalThis.localStorage = {getItem: () => null};
           globalThis.CustomEvent = class CustomEvent {
             constructor(type, options) { this.type = type; this.detail = options.detail; }
@@ -118,12 +125,22 @@ jobs:
           await import('./apps/magic-book/src/main.js');
           assert.match(root.innerHTML, /Magic Book/);
           assert.match(root.innerHTML, /Terra Aeterna/);
-          assert.match(root.innerHTML, /Open in ArcSweep/);
+          assert.match(root.innerHTML, /The page is the control surface/);
+          assert.doesNotMatch(root.innerHTML, /class="action-row"/);
+          assert.doesNotMatch(root.innerHTML, /class="volume-tabs"/);
           assert.match(root.innerHTML, /Ghost seam ready/);
           assert.match(root.innerHTML, /Attunement Studio/);
-          assert.match(root.innerHTML, /Canonical cadences · 12/);
+          assert.match(root.innerHTML, /Canonical cadences · 14/);
           console.log('render boot ok');
           NODE
+
+      - name: Gifted font seam
+        run: |
+          grep -q "Hypnotic 04 No Outline" apps/magic-book/src/gifted-fonts.css
+          grep -q "Square Lily Monogram" apps/magic-book/src/gifted-fonts.css
+          grep -q "gifted-fonts.css" apps/magic-book/index.html
+          test ! -e apps/magic-book/assets/fonts
+          echo 'gifted font seam ok'
 
       - name: Static HTTP surface
         run: |
@@ -134,7 +151,8 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4173/ | grep -q 'Magic Book'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/main.js | grep -q 'createAttunementEngine'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/styles.css >/dev/null
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/gifted-fonts.css | grep -q 'Magic Hypnotic 04'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/attunement.css >/dev/null
-          curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/gestures.js | grep -q 'wake-book-v1'
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/gestures.js | grep -q 'page-forward-v1'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/book/manifest.js | grep -q 'Terra Aeterna'
           echo 'http surface ok'
