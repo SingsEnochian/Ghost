@@ -1,5 +1,27 @@
 export const canonicalGestures = [
     {
+        id: 'page-back-v1',
+        label: 'Page Back',
+        description: 'Tap the extreme outer edge of the left page.',
+        scope: 'global',
+        priority: 60,
+        sensitivity: 'low',
+        sequence: [{type: 'tap', zone: 'page_edge_left'}],
+        action: {type: 'page.previous', payload: {}},
+        feedback: {visual: 'left-page-lift', audio: 'page-whisper', haptic: 'single-pulse'}
+    },
+    {
+        id: 'page-forward-v1',
+        label: 'Page Forward',
+        description: 'Tap the extreme outer edge of the right page.',
+        scope: 'global',
+        priority: 60,
+        sensitivity: 'low',
+        sequence: [{type: 'tap', zone: 'page_edge_right'}],
+        action: {type: 'page.next', payload: {}},
+        feedback: {visual: 'right-page-lift', audio: 'page-whisper', haptic: 'single-pulse'}
+    },
+    {
         id: 'wake-book-v1',
         label: 'Wake Book',
         description: 'Tap, tap, then hold the primary sigil.',
