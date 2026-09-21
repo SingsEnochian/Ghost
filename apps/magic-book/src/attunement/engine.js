@@ -27,6 +27,8 @@ export function resolveZone(event, bookElement) {
     if (right && top) return 'corner_tr';
     if (left && bottom) return 'corner_bl';
     if (right && bottom) return 'corner_br';
+    if (x <= 0.055) return 'page_edge_left';
+    if (x >= 0.945) return 'page_edge_right';
     if (top) return 'top_margin';
     if (bottom) return 'bottom_margin';
     if (left) return 'left_margin';
