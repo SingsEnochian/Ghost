@@ -1,0 +1,108 @@
+name: Magic Book Smoke
+
+on:
+  push:
+    branches:
+      - 'magic-book/**'
+    paths:
+      - 'apps/magic-book/**'
+      - '.github/workflows/magic-book-smoke.yml'
+  pull_request:
+    paths:
+      - 'apps/magic-book/**'
+      - '.github/workflows/magic-book-smoke.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: JavaScript syntax
+        run: |
+          node --check apps/magic-book/src/main.js
+          node --check apps/magic-book/src/book/manifest.js
+          node --check apps/magic-book/src/book/bridge.js
+          node --check apps/magic-book/src/adapters/ghost.js
+
+      - name: Volume manifest contract
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import {volumes} from './apps/magic-book/src/book/manifest.js';
+          assert.equal(volumes.length, 4);
+          for (const volume of volumes) {
+            assert.ok(volume.id);
+            assert.ok(volume.title);
+            assert.ok(volume.opening.length);
+            assert.ok(volume.timeline.length);
+            assert.ok(volume.bridges.length);
+          }
+          console.log('manifest ok:', volumes.map(v => v.id).join(', '));
+          NODE
+
+      - name: Bridge event contract
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          let receipt;
+          globalThis.window = {dispatchEvent: event => { receipt = event; }};
+          globalThis.CustomEvent = class CustomEvent {
+            constructor(type, options) { this.type = type; this.detail = options.detail; }
+          };
+          const {dispatchMagicBookEvent} = await import('./apps/magic-book/src/book/bridge.js');
+          dispatchMagicBookEvent('open-in-arcsweep', 'terra-aeterna', {source: 'smoke'});
+          assert.equal(receipt.type, 'magic-book:open-in-arcsweep');
+          assert.equal(receipt.detail.volumeId, 'terra-aeterna');
+          assert.equal(receipt.detail.payload.source, 'smoke');
+          console.log('bridge ok');
+          NODE
+
+      - name: Ghost adapter unconfigured path
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          globalThis.window = {location: {search: ''}};
+          globalThis.localStorage = {getItem: () => null};
+          const {ghostConfigured, loadGhostPosts} = await import('./apps/magic-book/src/adapters/ghost.js');
+          assert.equal(ghostConfigured(), false);
+          assert.deepEqual(await loadGhostPosts(), []);
+          console.log('ghost seam ok');
+          NODE
+
+      - name: Render boot
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const dummy = {value: '', addEventListener() {}};
+          const root = {
+            innerHTML: '',
+            querySelectorAll() { return []; },
+            querySelector() { return dummy; }
+          };
+          globalThis.document = {querySelector: selector => selector === '#root' ? root : dummy};
+          globalThis.window = {location: {search: ''}, dispatchEvent() {}};
+          globalThis.localStorage = {getItem: () => null};
+          globalThis.CustomEvent = class CustomEvent {
+            constructor(type, options) { this.type = type; this.detail = options.detail; }
+          };
+          await import('./apps/magic-book/src/main.js');
+          assert.match(root.innerHTML, /Magic Book/);
+          assert.match(root.innerHTML, /Terra Aeterna/);
+          assert.match(root.innerHTML, /Open in ArcSweep/);
+          assert.match(root.innerHTML, /Ghost seam ready/);
+          console.log('render boot ok');
+          NODE
+
+      - name: Static HTTP surface
+        run: |
+          python3 -m http.server 4173 --directory apps/magic-book >/tmp/magic-book-http.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid' EXIT
+          sleep 1
+          curl --fail --silent --show-error http://127.0.0.1:4173/ | grep -q 'Magic Book'
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/main.js | grep -q 'dispatchMagicBookEvent'
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/styles.css >/dev/null
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/book/manifest.js | grep -q 'Terra Aeterna'
+          echo 'http surface ok'
