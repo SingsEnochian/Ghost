@@ -31,6 +31,7 @@ jobs:
           node --check apps/magic-book/src/attunement/engine.js
           node --check apps/magic-book/src/attunement/studio.js
           node --check apps/magic-book/src/attunement/noisy.js
+          node --check apps/magic-book/src/attunement/bank-transport.js
           node --check apps/magic-book/src/attunement/noisy-bootstrap.js
 
       - name: Volume manifest contract
@@ -99,6 +100,7 @@ jobs:
             resolveCueForResolution,
             setSoundBinding
           } = await import('./apps/magic-book/src/attunement/noisy.js');
+          const {buildSoundBankCommand} = await import('./apps/magic-book/src/attunement/bank-transport.js');
           assert.ok(DEFAULT_SOUND_BINDINGS['page-whisper']);
           const resolution = {
             gestureId: 'page-forward-v1',
@@ -118,6 +120,11 @@ jobs:
           assert.equal(packet.schema, 'magic-book.attunement-action/v1');
           assert.equal(packet.context.rootHz, 220);
           assert.equal(packet.action.type, 'page.next');
+          const command = buildSoundBankCommand(packet, storage);
+          assert.equal(command.schema, 'magic-book.sound-bank-command/v1');
+          assert.equal(command.cueId, 'soft-chime');
+          assert.equal(command.binding.bankId, 'rowan-bank');
+          assert.equal(command.binding.presetKey, 'choir-aahs');
           console.log('noisy action binding ok');
           NODE
 
@@ -202,5 +209,6 @@ jobs:
           curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/attunement.css >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/gestures.js | grep -q 'page-forward-v1'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/noisy.js | grep -q 'magic-book.attunement-action/v1'
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/bank-transport.js | grep -q 'magic-book.sound-bank-command/v1'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/book/manifest.js | grep -q 'Terra Aeterna'
           echo 'http surface ok'
