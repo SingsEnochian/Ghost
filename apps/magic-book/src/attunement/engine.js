@@ -59,8 +59,7 @@ export function normalizePointerGesture(down, up, zone, options = {}) {
 
 function stepMatches(expected, actual, previous) {
   if (!actual || expected.type !== actual.type || expected.zone !== actual.zone) return false;
-  if (expected.pointerTypes?.length && !expected.pointerTypes.includes(actual.pointerType))
-    return false;
+  if (expected.pointerTypes?.length && !expected.pointerTypes.includes(actual.pointerType)) return false;
   if (expected.minDurationMs != null && actual.durationMs < expected.minDurationMs) return false;
   if (expected.maxDurationMs != null && actual.durationMs > expected.maxDurationMs) return false;
   if (previous && (expected.minGapMs != null || expected.maxGapMs != null)) {
@@ -80,15 +79,23 @@ function scopeMatches(pattern, context) {
 
 export function matchGestureSequence(sequence, patterns, context = {}) {
   const matches = patterns.filter((pattern) => {
-    if (!scopeMatches(pattern, context) || pattern.sequence.length !== sequence.length)
-      return false;
-    return pattern.sequence.every((step, index) =>
-      stepMatches(step, sequence[index], sequence[index - 1]),
-    );
+    if (!scopeMatches(pattern, context) || pattern.sequence.length !== sequence.length) return false;
+    return pattern.sequence.every((step, index) => stepMatches(step, sequence[index], sequence[index - 1]));
   });
   if (!matches.length) return null;
   matches.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
   return matches[0];
+}
+
+function sequenceMatchesPrefix(sequence, pattern, context = {}) {
+  if (!scopeMatches(pattern, context) || pattern.sequence.length <= sequence.length) return false;
+  return sequence.every((actual, index) => stepMatches(pattern.sequence[index], actual, sequence[index - 1]));
+}
+
+export function shouldFlushImmediately(sequence, patterns, context = {}) {
+  const exact = matchGestureSequence(sequence, patterns, context);
+  if (!exact) return false;
+  return !patterns.some((pattern) => sequenceMatchesPrefix(sequence, pattern, context));
 }
 
 function emitResolution(pattern, sequence, context) {
@@ -146,6 +153,11 @@ export function createAttunementEngine({
   const ingest = (step) => {
     if (!step || step.zone === 'outside' || step.zone === 'unknown') return;
     sequence.push(step);
+    const context = getContext() || {};
+    if (shouldFlushImmediately(sequence, patterns, context)) {
+      flush();
+      return;
+    }
     scheduleFlush();
   };
 

@@ -1,0 +1,40 @@
+name: Magic Book Format Oracle
+
+on:
+  push:
+    branches:
+      - 'magic-book/phase-2-noisy-attunement'
+    paths:
+      - '.github/workflows/magic-book-format-oracle.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node-pnpm
+      - name: Format and commit Phase 2 files
+        shell: bash
+        run: |
+          pnpm exec oxfmt \
+            .github/workflows/magic-book-smoke.yml \
+            apps/magic-book/src/attunement/bank-transport.js \
+            apps/magic-book/src/attunement/engine.js \
+            apps/magic-book/src/attunement/noisy.js
+          git add \
+            .github/workflows/magic-book-smoke.yml \
+            apps/magic-book/src/attunement/bank-transport.js \
+            apps/magic-book/src/attunement/engine.js \
+            apps/magic-book/src/attunement/noisy.js
+          if git diff --cached --quiet; then
+            echo 'Formatter already clean.'
+            exit 0
+          fi
+          git config user.name 'Magic Book Formatter'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'style(magic-book): apply Ghost formatter'
+          git push origin HEAD:magic-book/phase-2-noisy-attunement

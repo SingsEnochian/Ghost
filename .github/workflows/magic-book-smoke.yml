@@ -30,6 +30,9 @@ jobs:
           node --check apps/magic-book/src/attunement/gestures.js
           node --check apps/magic-book/src/attunement/engine.js
           node --check apps/magic-book/src/attunement/studio.js
+          node --check apps/magic-book/src/attunement/noisy.js
+          node --check apps/magic-book/src/attunement/bank-transport.js
+          node --check apps/magic-book/src/attunement/noisy-bootstrap.js
 
       - name: Volume manifest contract
         run: |
@@ -52,7 +55,7 @@ jobs:
           node --input-type=module <<'NODE'
           import assert from 'node:assert/strict';
           import {canonicalGestures} from './apps/magic-book/src/attunement/gestures.js';
-          import {matchGestureSequence, normalizePointerGesture, resolveZone} from './apps/magic-book/src/attunement/engine.js';
+          import {matchGestureSequence, normalizePointerGesture, resolveZone, shouldFlushImmediately} from './apps/magic-book/src/attunement/engine.js';
           assert.equal(canonicalGestures.length, 14);
           const wake = [
             {type:'tap', zone:'sigil_primary', at:100, durationMs:80, pointerType:'touch'},
@@ -60,19 +63,69 @@ jobs:
             {type:'hold', zone:'sigil_primary', at:850, durationMs:600, pointerType:'touch'}
           ];
           assert.equal(matchGestureSequence(wake, canonicalGestures, {volumeId:'terra-aeterna', mode:'dormant'}).id, 'wake-book-v1');
+          assert.equal(shouldFlushImmediately(wake, canonicalGestures, {volumeId:'terra-aeterna', mode:'dormant'}), true);
           const calm = [
             {type:'tap', zone:'bottom_margin', at:100, durationMs:80, pointerType:'touch'},
             {type:'tap', zone:'bottom_margin', at:620, durationMs:80, pointerType:'touch'},
             {type:'tap', zone:'bottom_margin', at:1140, durationMs:80, pointerType:'touch'}
           ];
           assert.equal(matchGestureSequence(calm, canonicalGestures, {}).id, 'calm-page-v1');
-          assert.equal(matchGestureSequence([{type:'tap', zone:'page_edge_right', at:100, durationMs:70, pointerType:'touch'}], canonicalGestures, {}).id, 'page-forward-v1');
+          assert.equal(shouldFlushImmediately(calm, canonicalGestures, {}), true);
+          const pageForward = [{type:'tap', zone:'page_edge_right', at:100, durationMs:70, pointerType:'touch'}];
+          assert.equal(matchGestureSequence(pageForward, canonicalGestures, {}).id, 'page-forward-v1');
+          assert.equal(shouldFlushImmediately(pageForward, canonicalGestures, {}), true);
           assert.equal(matchGestureSequence([{type:'tap', zone:'page_edge_left', at:100, durationMs:70, pointerType:'touch'}], canonicalGestures, {}).id, 'page-back-v1');
+          assert.equal(shouldFlushImmediately([{type:'tap', zone:'bottom_margin', at:100, durationMs:70, pointerType:'touch'}], canonicalGestures, {}), false);
           assert.equal(normalizePointerGesture({clientX:0,clientY:0,timeStamp:0,pointerType:'pen'},{clientX:70,clientY:0,timeStamp:220,pointerType:'pen'},'sigil_primary').type, 'trace');
           const book = {getBoundingClientRect: () => ({left:0, top:0, width:1000, height:800})};
           assert.equal(resolveZone({clientX:20,clientY:400,target:{}}, book), 'page_edge_left');
           assert.equal(resolveZone({clientX:980,clientY:400,target:{}}, book), 'page_edge_right');
           console.log('attunement matcher ok');
+          NODE
+
+      - name: Noisy action binding contract
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          const store = new Map();
+          const storage = {
+            getItem: key => store.get(key) ?? null,
+            setItem: (key, value) => store.set(key, value)
+          };
+          const {
+            DEFAULT_SOUND_BINDINGS,
+            bindActionSound,
+            buildAttunementActionPacket,
+            getActionSoundBindings,
+            resolveCueForResolution,
+            setSoundBinding
+          } = await import('./apps/magic-book/src/attunement/noisy.js');
+          const {buildSoundBankCommand} = await import('./apps/magic-book/src/attunement/bank-transport.js');
+          assert.ok(DEFAULT_SOUND_BINDINGS['page-whisper']);
+          const resolution = {
+            gestureId: 'page-forward-v1',
+            label: 'Page Forward',
+            source: {volumeId: 'terra-aeterna'},
+            action: {type: 'page.next', payload: {}},
+            feedback: {audio: 'page-whisper', haptic: 'single-pulse'}
+          };
+          assert.equal(resolveCueForResolution(resolution, storage), 'page-whisper');
+          bindActionSound('page.next', 'soft-chime', storage);
+          assert.equal(getActionSoundBindings(storage)['page.next'], 'soft-chime');
+          assert.equal(resolveCueForResolution(resolution, storage), 'soft-chime');
+          const customised = setSoundBinding('soft-chime', {bankId: 'rowan-bank', presetKey: 'choir-aahs'}, storage);
+          assert.equal(customised.bankId, 'rowan-bank');
+          assert.equal(customised.presetKey, 'choir-aahs');
+          const packet = buildAttunementActionPacket(resolution, {volumeId: 'terra-aeterna'});
+          assert.equal(packet.schema, 'magic-book.attunement-action/v1');
+          assert.equal(packet.context.rootHz, 220);
+          assert.equal(packet.action.type, 'page.next');
+          const command = buildSoundBankCommand(packet, storage);
+          assert.equal(command.schema, 'magic-book.sound-bank-command/v1');
+          assert.equal(command.cueId, 'soft-chime');
+          assert.equal(command.binding.bankId, 'rowan-bank');
+          assert.equal(command.binding.presetKey, 'choir-aahs');
+          console.log('noisy action binding ok');
           NODE
 
       - name: Bridge event contract
@@ -149,10 +202,13 @@ jobs:
           trap 'kill $server_pid' EXIT
           sleep 1
           curl --fail --silent --show-error http://127.0.0.1:4173/ | grep -q 'Magic Book'
+          curl --fail --silent --show-error http://127.0.0.1:4173/ | grep -q 'noisy-bootstrap.js'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/main.js | grep -q 'createAttunementEngine'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/styles.css >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:4173/src/gifted-fonts.css | grep -q 'Magic Hypnotic 04'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/attunement.css >/dev/null
           curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/gestures.js | grep -q 'page-forward-v1'
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/noisy.js | grep -q 'magic-book.attunement-action/v1'
+          curl --fail --silent --show-error http://127.0.0.1:4173/src/attunement/bank-transport.js | grep -q 'magic-book.sound-bank-command/v1'
           curl --fail --silent --show-error http://127.0.0.1:4173/src/book/manifest.js | grep -q 'Terra Aeterna'
           echo 'http surface ok'
